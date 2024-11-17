@@ -25,11 +25,10 @@ argmax:
     li t6, 1
     blt a1, t6, handle_error
 
-    lw t0, 0(a0)      # t0 = a0[0], current maximum value
+    lw t0, 0(a0)
 
-    li t1, 0          # t1 = index of current maximum
-    li t2, 1          # t2 = current index in the loop
-
+    li t1, 0
+    li t2, 1
 loop_start:
     # Check if t2 >= a1
     bge t2, a1, done_loop
@@ -42,7 +41,7 @@ loop_start:
     lw t5, 0(t4)        # t5 = a0[t2]
 
     # Compare t5 with t0 (current maximum value)
-    blt t5, t0, next    # if t5 < t0, go to next iteration
+    blt t5, t0, nextiter    # if t5 < t0, go to next iteration
 
     # If t5 >= t0
     # Update t0 to t5
@@ -51,7 +50,7 @@ loop_start:
     # Update t1 to t2 (index of current maximum)
     mv t1, t2
 
-next:
+nextiter:
     # Increment t2
     addi t2, t2, 1
 

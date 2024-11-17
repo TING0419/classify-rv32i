@@ -32,67 +32,50 @@ write_matrix:
     sw s2, 12(sp)
     sw s3, 16(sp)
     sw s4, 20(sp)
-    sw s5, 24(sp)
 
-    # Save arguments
+    # save arguments
     mv s1, a1        # s1 = matrix pointer
     mv s2, a2        # s2 = number of rows
     mv s3, a3        # s3 = number of columns
 
-    li a1, 1         # Mode "w" for write
-
+    li a1, 1
     jal fopen
-
     li t0, -1
-    beq a0, t0, fopen_error   # fopen failed
-
-    mv s0, a0        # s0 = file descriptor
+    beq a0, t0, fopen_error   # fopen didn't work
+    mv s0, a0        # file descriptor
 
     # Write number of rows and columns to file
-    sw s2, 24(sp)    # Store number of rows
-    sw s3, 28(sp)    # Store number of columns
+    sw s2, 24(sp)    # number of rows
+    sw s3, 28(sp)    # number of columns
 
     mv a0, s0
-    addi a1, sp, 24  # Buffer with rows and columns
-    li a2, 2         # Number of elements
-    li a3, 4         # Size of each element
-
+    addi a1, sp, 24  # buffer with rows and columns
+    li a2, 2         # number of elements to write
+    li a3, 4         # size of each element
     jal fwrite
-
     li t0, 2
     bne a0, t0, fwrite_error
 
-    # Compute total number of elements s4 = s2 * s3
-    li s4, 0         # s4 = total elements
-    mv t0, s2        # multiplicand (rows)
-    mv t1, s3        # multiplier (columns)
+    # Calculate total elements (s2 * s3) without using mul
+    li s4, 0         # Initialize result
+    mv t0, s2        # Use s2 (rows) as counter
+multiply_loop:
+    beqz t0, multiply_done
+    add s4, s4, s3   # Add columns s3 times
+    addi t0, t0, -1
+    j multiply_loop
+multiply_done:
 
-mul_loop3:
-    beq t1, zero, mul_done3
-    andi t2, t1, 1
-    beq t2, zero, skip_add3
-    add s4, s4, t0
-skip_add3:
-    slli t0, t0, 1
-    srli t1, t1, 1
-    j mul_loop3
-mul_done3:
-
-    # Write matrix data to file
+    # write matrix data to file
     mv a0, s0
-    mv a1, s1        # Matrix data pointer
-    mv a2, s4        # Number of elements to write
-    li a3, 4         # Size of each element
-
+    mv a1, s1        # matrix data pointer
+    mv a2, s4        # number of elements to write
+    li a3, 4         # size of each element
     jal fwrite
-
     bne a0, s4, fwrite_error
 
-    # Close file
     mv a0, s0
-
     jal fclose
-
     li t0, -1
     beq a0, t0, fclose_error
 
@@ -103,21 +86,19 @@ mul_done3:
     lw s2, 12(sp)
     lw s3, 16(sp)
     lw s4, 20(sp)
-    lw s5, 24(sp)
     addi sp, sp, 44
-
     jr ra
 
 fopen_error:
-    li a0, 27
+    li a0, 27        # Updated to match specification
     j error_exit
 
 fwrite_error:
-    li a0, 30
+    li a0, 30        # Updated to match specification
     j error_exit
 
 fclose_error:
-    li a0, 28
+    li a0, 28        # Updated to match specification
     j error_exit
 
 error_exit:
@@ -127,6 +108,5 @@ error_exit:
     lw s2, 12(sp)
     lw s3, 16(sp)
     lw s4, 20(sp)
-    lw s5, 24(sp)
     addi sp, sp, 44
     j exit
