@@ -35,7 +35,7 @@
 #   Caller is responsible for freeing returned matrix pointer
 # ==============================================================================
 read_matrix:
-    
+
     # Prologue
     addi sp, sp, -40
     sw ra, 0(sp)
@@ -44,50 +44,65 @@ read_matrix:
     sw s2, 12(sp)
     sw s3, 16(sp)
     sw s4, 20(sp)
+    sw s5, 24(sp)
 
-    mv s3, a1         # save and copy rows
-    mv s4, a2         # save and copy cols
+    mv s3, a1         # s3 = address to store rows
+    mv s4, a2         # s4 = address to store cols
 
     li a1, 0
 
     jal fopen
 
     li t0, -1
-    beq a0, t0, fopen_error   # fopen didn't work
+    beq a0, t0, fopen_error   # fopen failed
 
-    mv s0, a0        # file
+    mv s0, a0        # s0 = file descriptor
 
-    # read rows n columns
+    # Read rows and columns
     mv a0, s0
-    addi a1, sp, 28  # a1 is a buffer
-
-    li a2, 8         # look at 2 numbers
+    addi a1, sp, 28  # Buffer on stack
+    li a2, 8         # Read 8 bytes
 
     jal fread
 
     li t0, 8
     bne a0, t0, fread_error
 
-    lw t1, 28(sp)    # opening to save num rows
-    lw t2, 32(sp)    # opening to save num cols
+    lw t1, 28(sp)    # t1 = number of rows
+    lw t2, 32(sp)    # t2 = number of columns
 
-    sw t1, 0(s3)     # saves num rows
-    sw t2, 0(s4)     # saves num cols
+    sw t1, 0(s3)     # Store number of rows
+    sw t2, 0(s4)     # Store number of columns
 
-    # mul s1, t1, t2   # s1 is number of elements
-    # FIXME: Replace 'mul' with your own implementation
+    # Compute total number of elements s1 = t1 * t2
+    li s1, 0         # s1 = total elements
+    mv t3, t1        # multiplicand (rows)
+    mv t4, t2        # multiplier (columns)
 
-    slli t3, s1, 2
-    sw t3, 24(sp)    # size in bytes
+mul_loop2:
+    beq t4, zero, mul_done2
+    andi t5, t4, 1
+    beq t5, zero, skip_add2
+    add s1, s1, t3
+skip_add2:
+    slli t3, t3, 1
+    srli t4, t4, 1
+    j mul_loop2
+mul_done2:
 
+    # Compute size in bytes
+    slli t3, s1, 2   # t3 = s1 * 4
+    sw t3, 24(sp)    # Store size in bytes
+
+    # Allocate memory for matrix
     lw a0, 24(sp)    # a0 = size in bytes
 
     jal malloc
 
     beq a0, x0, malloc_error
 
-    # set up file, buffer and bytes to read
-    mv s2, a0        # matrix
+    # Read matrix data
+    mv s2, a0        # s2 = pointer to matrix data
     mv a0, s0
     mv a1, s2
     lw a2, 24(sp)
@@ -97,15 +112,15 @@ read_matrix:
     lw t3, 24(sp)
     bne a0, t3, fread_error
 
+    # Close file
     mv a0, s0
 
     jal fclose
 
     li t0, -1
-
     beq a0, t0, fclose_error
 
-    mv a0, s2
+    mv a0, s2        # Return pointer to matrix
 
     # Epilogue
     lw ra, 0(sp)
@@ -114,6 +129,7 @@ read_matrix:
     lw s2, 12(sp)
     lw s3, 16(sp)
     lw s4, 20(sp)
+    lw s5, 24(sp)
     addi sp, sp, 40
 
     jr ra
@@ -141,5 +157,6 @@ error_exit:
     lw s2, 12(sp)
     lw s3, 16(sp)
     lw s4, 20(sp)
+    lw s5, 24(sp)
     addi sp, sp, 40
     j exit

@@ -18,10 +18,12 @@ abs:
     # Prologue
     ebreak
     # Load number from memory
-    lw t0 0(a0)
+    lw t0, 0(a0)
     bge t0, zero, done
 
-    # TODO: Add your own implementation
+    # Compute the absolute value
+    sub t0, zero, t0     # Negate t0
+    sw t0, 0(a0)         # Store the absolute value back to memory
 
 done:
     # Epilogue

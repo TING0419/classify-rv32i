@@ -23,13 +23,37 @@
 #   Result: [ 0, 0, 3,  0, 5]
 # ==============================================================================
 relu:
-    li t0, 1             
-    blt a1, t0, error     
-    li t1, 0             
+    li t0, 1             # Minimum valid length
+    blt a1, t0, error    # Check array length >= 1
+    li t1, 0             # Index i = 0
 
 loop_start:
-    # TODO: Add your own implementation
+    bge t1, a1, loop_end
+
+    # Compute address: t2 = a0 + t1 * 4
+    slli t2, t1, 2       # t2 = t1 * 4
+    add t2, a0, t2       # t2 = address of array[i]
+
+    # Load value
+    lw t3, 0(t2)         # t3 = array[i]
+
+    # Apply ReLU
+    blt t3, zero, set_zero
+    j store_value
+set_zero:
+    li t3, 0
+store_value:
+    # Store modified value back to array
+    sw t3, 0(t2)
+
+    # Increment index
+    addi t1, t1, 1
+
+    j loop_start
+
+loop_end:
+    jr ra
 
 error:
-    li a0, 36          
-    j exit          
+    li a0, 36            # Error code for invalid array length
+    j exit

@@ -25,12 +25,43 @@ argmax:
     li t6, 1
     blt a1, t6, handle_error
 
-    lw t0, 0(a0)
+    lw t0, 0(a0)      # t0 = a0[0], current maximum value
 
-    li t1, 0
-    li t2, 1
+    li t1, 0          # t1 = index of current maximum
+    li t2, 1          # t2 = current index in the loop
+
 loop_start:
-    # TODO: Add your own implementation
+    # Check if t2 >= a1
+    bge t2, a1, done_loop
+
+    # Compute address of a0[t2] = a0 + t2 * 4
+    slli t3, t2, 2      # t3 = t2 * 4
+
+    add t4, a0, t3      # t4 = address of a0[t2]
+
+    lw t5, 0(t4)        # t5 = a0[t2]
+
+    # Compare t5 with t0 (current maximum value)
+    blt t5, t0, next    # if t5 < t0, go to next iteration
+
+    # If t5 >= t0
+    # Update t0 to t5
+    mv t0, t5           # t0 = t5
+
+    # Update t1 to t2 (index of current maximum)
+    mv t1, t2
+
+next:
+    # Increment t2
+    addi t2, t2, 1
+
+    # Jump back to loop_start
+    j loop_start
+
+done_loop:
+    # Return t1 in a0
+    mv a0, t1
+    jr ra
 
 handle_error:
     li a0, 36
