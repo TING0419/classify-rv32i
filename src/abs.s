@@ -1,7 +1,7 @@
 .globl abs
 
 .text
-# =================================================================
+# ================================================================
 # FUNCTION: Absolute Value Converter
 #
 # Transforms any integer into its absolute (non-negative) value by

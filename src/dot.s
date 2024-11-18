@@ -24,80 +24,74 @@
 # Error Handling:
 #   - Exits with code 36 if element count < 1
 #   - Exits with code 37 if any stride < 1
-# =======================================================
+# ======================================================
 dot:
-    # Error checking
     li t0, 1
-    blt a2, t0, error_terminate    # If element_count < 1, error
-    blt a3, t0, error_terminate    # If stride0 < 1, error
-    blt a4, t0, error_terminate    # If stride1 < 1, error
+    blt a2, t0, error_terminate  
+    blt a3, t0, error_terminate   
+    blt a4, t0, error_terminate  
 
-    # Initialize sum and loop counter
-    li t0, 0       # t0 = sum = 0
-    li t1, 0       # t1 = i = 0
+    li t0, 0            # product
+    li t1, 0            # loop counter
+    li t2, 0            # Initialize index0 = 0
+    li t3, 0            # Initialize index1 = 0
 
+###############################################################
 loop_start:
-    bge t1, a2, loop_end    # Check if done (i >= element_count)
+    bge t1, a2, loop_end        # If counter >= element_count, exit the loop
 
-    # Calculate both offsets in one loop
-    mv t2, t1       # t2 = t1 (copy of loop counter)
-    li t3, 0        # t3 = offset1 = 0
-    li t4, 0        # t4 = offset2 = 0
+    # Calculate addresses and load values
+    slli t4, t2, 2              # t4 = index0 * 4 (byte offset for arr0)
+    add t5, a0, t4              # t5 = base address of arr0 + offset
+    lw t4, 0(t5)                # t4 = value from arr0[index0]
 
-offset_loop:
-    beqz t2, offset_done
-    add t3, t3, a3    # t3 += stride0
-    add t4, t4, a4    # t4 += stride1
-    addi t2, t2, -1   # t2 -= 1
-    j offset_loop
+    slli t5, t3, 2              # t5 = index1 * 4 (byte offset for arr1)
+    add t6, a1, t5              # t6 = base address of arr1 + offset
+    lw t5, 0(t6)                # t5 = value from arr1[index1]
 
-offset_done:
-    # Convert offsets to bytes and load values
-    slli t3, t3, 2     # t3 *= 4 (convert to byte offset for arr0)
-    add t3, a0, t3     # t3 = address of arr0[i * stride0]
-    lw t5, 0(t3)       # t5 = arr0[i * stride0]
+    # Save the current loop counter onto the stack
+    addi sp, sp, -4             # Decrement stack pointer to allocate space
+    sw t1, 0(sp)                # Store t1 (loop counter) onto the stack
 
-    slli t4, t4, 2     # t4 *= 4 (convert to byte offset for arr1)
-    add t4, a1, t4     # t4 = address of arr1[i * stride1]
-    lw t6, 0(t4)       # t6 = arr1[i * stride1]
+    # Prepare for multiplication
+    li t6, 0                    # t6 = 0 (initialize multiplication result)
+    beq t5, zero, skip_mult     # If t5 is 0, skip the multiplication step
 
-    # Multiply elements using repeated addition
-    li t3, 0           # t3 = product = 0
+    # Handle negative multiplication
+    bgez t5, mult_pos           # If t5 >= 0, jump to mult_pos
+    neg t5, t5                  # Make t5 positive
+    neg t4, t4                  # Negate t4 to preserve the correct sign
 
-    # Handle negative multiplier
-    bltz t5, handle_neg   # If t5 < 0, handle negative
+mult_pos:
+    beqz t5, skip_mult          # If multiplier t5 is 0, multiplication is done
+    add t6, t6, t4              # Add multiplicand t4 to result t6
+    addi t5, t5, -1             # Decrement multiplier t5
+    j mult_pos                  # Repeat the multiplication loop
 
-    mv t4, t5          # t4 = multiplier = t5
-    j mult_loop
+skip_mult:
+    lw t1, 0(sp)                # Restore t1 (loop counter) from the stack
+    addi sp, sp, 4              # Increment stack pointer to reclaim space
 
-handle_neg:
-    neg t4, t5         # t4 = -t5 (make multiplier positive)
-    neg t6, t6         # t6 = -t6 (negate multiplicand)
+    # Accumulate the product into the sum
+    add t0, t0, t6              # Add multiplication result t6 to the total sum t0
 
-mult_loop:
-    beqz t4, mult_done    # If multiplier == 0, done
-    add t3, t3, t6        # t3 += t6 (product += multiplicand)
-    addi t4, t4, -1       # t4 -= 1 (decrement multiplier)
-    j mult_loop
+    # Update indices using strides
+    add t2, t2, a3              # index0 += stride0
+    add t3, t3, a4              # index1 += stride1
+    addi t1, t1, 1              # Increment loop counter t1
 
-mult_done:
-    # Accumulate product into sum
-    add t0, t0, t3        # t0 += t3 (sum += product)
+    j loop_start                # Jump back to loop_start to continue the loop
 
-    # Increment loop counter
-    addi t1, t1, 1        # t1 += 1 (i += 1)
-    j loop_start
-
+##############################################################
 loop_end:
-    # Move result into return register and return
     mv a0, t0
     jr ra
 
 error_terminate:
-    blt a2, t0, set_error_36   # If element_count < 1, set error 36
-    li a0, 37                  # Error code 37 (stride error)
+    blt a2, t0, set_error_36
+    li a0, 37
     j exit
 
 set_error_36:
-    li a0, 36                  # Error code 36 (element count error)
+    li a0, 36
     j exit

@@ -33,7 +33,7 @@
 #
 # Memory Note:
 #   Caller is responsible for freeing returned matrix pointer
-# ==============================================================================
+# =============================================================================
 read_matrix:
     # Prologue
     addi sp, sp, -40
@@ -53,7 +53,7 @@ read_matrix:
     beq a0, t0, fopen_error   # fopen didn't work
     mv s0, a0        # file
 
-    # read rows and columns
+    # read rows n columns
     mv a0, s0
     addi a1, sp, 28  # a1 is a buffer
     li a2, 8         # look at 2 numbers
@@ -65,18 +65,22 @@ read_matrix:
     lw t2, 32(sp)    # t2 = num cols
     sw t1, 0(s3)     # saves num rows
     sw t2, 0(s4)     # saves num cols
-
-    # Calculate total elements (t1 * t2) without mul instruction
-    li s1, 0         # Initialize result
-    mv t3, t1        # Use t1 (rows) as counter
-multiply_loop:
+	
+	# mul s1, t1, t2   # s1 is number of elements
+    # FIXME: Replace 'mul' with your own implementation
+    # t1 * t2 without mul instruction
+    li s1, 0         # set s1 = 0
+    mv t3, t1        # t3=t1 (rows) as counter
+	
+	#t1*t2 = t2 plus t1 times 
+multiply:
     beqz t3, multiply_done
-    add s1, s1, t2   # Add columns t2 times
+    add s1, s1, t2   
     addi t3, t3, -1
-    j multiply_loop
+    j multiply
+	
 multiply_done:
-
-    slli t3, s1, 2    # Multiply by 4 for bytes (shift left by 2)
+    slli t3, s1, 2    
     sw t3, 24(sp)     # size in bytes
 
     lw a0, 24(sp)     # a0 = size in bytes

@@ -1,7 +1,7 @@
 .globl matmul
 
 .text
-# =======================================================
+# ======================================================
 # FUNCTION: Matrix Multiplication Implementation
 #
 # Performs operation: D = M0 × M1
@@ -115,15 +115,17 @@ inner_loop_start:
     j inner_loop_start
     
 inner_loop_end:
-     # TODO: Add your own implementation
-    
-    mv t0, a2          # t0 = M0's row
-    slli t2, t0, 2     # t2 = cols * 4 
-    add s3, s3, t2     # update M0 pointer to next col's base address
-    
-    addi s0, s0, 1     # outlooper+1
-    
-    j outer_loop_start # 
+    # Move to the next row of M0
+    mv t0, a2          # t0 = number of columns in M0
+    slli t2, t0, 2     # t2 = number of columns * 4 (convert to byte offset)
+    add s3, s3, t2     # Update the M0 pointer to the base address of the next row
+
+    # Increment the outer loop counter
+    addi s0, s0, 1     # s0 = s0 + 1 (move to the next row in M0)
+
+    # Jump back to the start of the outer loop
+    j outer_loop_start  
+
 
 outer_loop_end:
     # Epilogue

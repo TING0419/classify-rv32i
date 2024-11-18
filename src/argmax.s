@@ -20,7 +20,7 @@
 #
 # Error Cases:
 #   - Terminates program with exit code 36 if array length < 1
-# =================================================================
+# ================================================================
 argmax:
     li t6, 1
     blt a1, t6, handle_error

@@ -1,7 +1,7 @@
 .globl classify
 
 .text
-# =====================================
+# ====================================
 # NEURAL NETWORK CLASSIFIER
 # =====================================
 # Description:
@@ -166,17 +166,19 @@ classify:
     
     lw t0, 0(s3)
     lw t1, 0(s8)
-    # mul a0, t0, t1 # FIXME: Replace 'mul' with your own implementation
+	
+	# mul a0, t0, t1 # FIXME: Replace 'mul' with your own implementation
+    li a0, 0        # Initialize result, argument count
+    mv t2, t0       # Use t0 = counter
 
-    li a0, 0              # Initialize result
-    mv t2, t0             # Copy rows
-mult1_loop:
-    beqz t2, mult1_done
-    add a0, a0, t1    # Add cols
-    addi t2, t2, -1   # Decrement counter
-    j mult1_loop
-mult1_done:
-    slli a0, a0, 2
+mult_loop1:			#Repeated addition
+    beqz t2, mult_done1 #if t2=0,go mult_done1
+    add a0, a0, t1      #do mult 
+    addi t2, t2, -1		#counter-1
+    j mult_loop1
+
+mult_done1:
+	slli a0, a0, 2
     jal malloc 
     beq a0, x0, error_malloc
     mv s9, a0 # move h to s9
@@ -200,39 +202,41 @@ mult1_done:
     lw a4, 16(sp)
     lw a5, 20(sp)
     lw a6, 24(sp)
-    
+	
     addi sp, sp, 28
     
-    # Compute h = relu(h)
+	# Compute h = relu(h)
     addi sp, sp, -8
     
     sw a0, 0(sp)
     sw a1, 4(sp)
     
-    mv a0, s9 # move h to the first argument
-    lw t0, 0(s3)
-    lw t1, 0(s8)
-    # mul a1, t0, t1 # length of h array and set it as second argument
+    mv a0, s9     # h matrix
+    # Calculate length (m0_rows * input_cols)
+    lw t0, 0(s3)  # Load m0 rows
+    lw t1, 0(s8)  # Load input cols
+	
+	# mul a1, t0, t1 # length of h array and set it as second argument
     # FIXME: Replace 'mul' with your own implementation
+    li a1, 0      # Initialize result
+    mv t2, t0     # Use t0 as counter
+	
+mult_loop2:        #Repeated addition
+    beqz t2, mult_done2
+    add a1, a1, t1      
+    addi t2, t2, -1
+    j mult_loop2
+	
+mult_done2:
     
-    li a1, 0              # Initialize result
-    mv t2, t0             # Copy rows
-mult2_loop:
-    beqz t2, mult2_done
-    add a1, a1, t1    # Add cols
-    addi t2, t2, -1   # Decrement counter
-    j mult2_loop
-mult2_done:
     jal relu
     
     lw a0, 0(sp)
     lw a1, 4(sp)
-    
     addi sp, sp, 8
     
     # Compute o = matmul(m1, h)
     addi sp, sp, -28
-    
     sw a0, 0(sp)
     sw a1, 4(sp)
     sw a2, 8(sp)
@@ -240,34 +244,34 @@ mult2_done:
     sw a4, 16(sp)
     sw a5, 20(sp)
     sw a6, 24(sp)
+    # mul a0, t0, t1 
+	# FIXME: Replace 'mul' with your own implementation
+    # Calculate size for o (m1_rows * input_cols)
+    lw t0, 0(s5)  # Load m1 rows
+    lw t1, 0(s8)  # Load input cols
+    li a0, 0      # Initialize result
+    mv t2, t0     # Use t0 as counter
+	
+mult_loop3:		  #Repeated addition
+    beqz t2, mult_done3
+    add a0, a0, t1
+    addi t2, t2, -1
+    j mult_loop3
+	
+mult_done3:
+    slli a0, a0, 2  # Multiply by 4 for bytes
     
-    lw t0, 0(s3)
-    lw t1, 0(s6)
-    # mul a0, t0, t1 # FIXME: Replace 'mul' with your own implementation
-
-    li a0, 0              # Initialize result
-    mv t2, t0             # Copy rows
-mult3_loop:
-    beqz t2, mult3_done
-    add a0, a0, t1    # Add cols
-    addi t2, t2, -1   # Decrement counter
-    j mult3_loop
-mult3_done:
-    slli a0, a0, 2
     jal malloc 
     beq a0, x0, error_malloc
-    mv s10, a0 # move o to s10
+    mv s10, a0    # save o pointer
+    mv a6, a0     # o pointer for matmul
     
-    mv a6, a0 # o
-    
-    mv a0, s1 # move m1 array to first arg
-    lw a1, 0(s5) # move m1 rows to second arg
-    lw a2, 0(s6) # move m1 cols to third arg
-    
-    mv a3, s9 # move h array to fourth arg
-    lw a4, 0(s3) # move h rows to fifth arg
-    lw a5, 0(s8) # move h cols to sixth arg
-    
+    mv a0, s1     # m1 matrix
+    lw a1, 0(s5)  # m1 rows
+    lw a2, 0(s6)  # m1 cols
+    mv a3, s9     # h matrix
+    lw a4, 0(s3)  # h rows
+    lw a5, 0(s8)  # h cols
     jal matmul
     
     lw a0, 0(sp)
@@ -277,136 +281,117 @@ mult3_done:
     lw a4, 16(sp)
     lw a5, 20(sp)
     lw a6, 24(sp)
-    
     addi sp, sp, 28
     
     # Write output matrix o
     addi sp, sp, -16
-    
     sw a0, 0(sp)
     sw a1, 4(sp)
     sw a2, 8(sp)
     sw a3, 12(sp)
     
-    lw a0, 16(a1) # load filename string into first arg
-    mv a1, s10 # load array into second arg
-    lw a2, 0(s5) # load number of rows into fourth arg
-    lw a3, 0(s8) # load number of cols into third arg
-    
+    lw a1, 4(sp)  # restore argument pointer
+    lw a0, 16(a1) # get OUTPUT_PATH
+    mv a1, s10    # o matrix
+    lw a2, 0(s5)  # rows
+    lw a3, 0(s8)  # cols
     jal write_matrix
     
     lw a0, 0(sp)
     lw a1, 4(sp)
     lw a2, 8(sp)
     lw a3, 12(sp)
-    
     addi sp, sp, 16
     
     # Compute and return argmax(o)
     addi sp, sp, -12
-    
     sw a0, 0(sp)
     sw a1, 4(sp)
     sw a2, 8(sp)
     
-    mv a0, s10 # load o array into first arg
-    lw t0, 0(s3)
-    lw t1, 0(s6)
-    # mul a1, t0, t1 # load length of array into second arg
+    mv a0, s10    # o matrix
+    # Calculate length (m1_rows * input_cols)	
+	#mul a1, t0, t1 # load length of array into second arg
     # FIXME: Replace 'mul' with your own implementation
+    lw t0, 0(s5)  # Load m1 rows
+    lw t1, 0(s8)  # Load input cols
+    li a1, 0      # Initialize result
+    mv t2, t0     # Use t0 as counter
+
+mult_loop4:		  #Repeated addition
+    beqz t2, mult_done4
+    add a1, a1, t1
+    addi t2, t2, -1
+    j mult_loop4
+mult_done4:
     
-    li a1, 0              # Initialize result
-    mv t2, t0             # Copy rows
-mult4_loop:
-    beqz t2, mult4_done
-    add a1, a1, t1    # Add cols
-    addi t2, t2, -1   # Decrement counter
-    j mult4_loop
-mult4_done:
     jal argmax
-    
-    mv t0, a0 # move return value of argmax into t0
+    mv t0, a0     # save argmax result
     
     lw a0, 0(sp)
     lw a1, 4(sp)
     lw a2, 8(sp)
-    
-    addi sp, sp 12
+    addi sp, sp, 12
     
     mv a0, t0
 
-    # If enabled, print argmax(o) and newline
-    bne a2, x0, epilouge
+    # Print result if not in silent mode
+    bne a2, x0, epilogue
     
     addi sp, sp, -4
     sw a0, 0(sp)
-    
     jal print_int
     li a0, '\n'
     jal print_char
-    
     lw a0, 0(sp)
     addi sp, sp, 4
     
-    # Epilouge
-epilouge:
+epilogue:
+    # Save return value
     addi sp, sp, -4
     sw a0, 0(sp)
     
+    # Free all allocated memory
     mv a0, s0
     jal free
-    
     mv a0, s1
     jal free
-    
     mv a0, s2
     jal free
-    
     mv a0, s3
     jal free
-    
     mv a0, s4
     jal free
-    
     mv a0, s5
     jal free
-    
     mv a0, s6
     jal free
-    
     mv a0, s7
     jal free
-    
     mv a0, s8
     jal free
-    
     mv a0, s9
     jal free
-    
     mv a0, s10
     jal free
     
+    # Restore return value
     lw a0, 0(sp)
     addi sp, sp, 4
 
+    # Restore saved registers
     lw ra, 0(sp)
-    
-    lw s0, 4(sp) # m0 matrix
-    lw s1, 8(sp) # m1 matrix
-    lw s2, 12(sp) # input matrix
-    
-    lw s3, 16(sp) 
+    lw s0, 4(sp)
+    lw s1, 8(sp)
+    lw s2, 12(sp)
+    lw s3, 16(sp)
     lw s4, 20(sp)
-    
     lw s5, 24(sp)
     lw s6, 28(sp)
-    
     lw s7, 32(sp)
     lw s8, 36(sp)
-    
-    lw s9, 40(sp) # h
-    lw s10, 44(sp) # o
-    
+    lw s9, 40(sp)
+    lw s10, 44(sp)
     addi sp, sp, 48
     
     jr ra
